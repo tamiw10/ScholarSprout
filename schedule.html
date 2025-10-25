@@ -1,79 +1,18 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Study Schedule</title>
-  <link rel="stylesheet" href="newhacks.css">
-  <style>
-    body { display:flex; align-items:flex-start; justify-content:center; padding:2rem; }
-    .card { max-width:900px; width:100%; background:var(--card); border-radius:12px; box-shadow:0 8px 30px rgba(15,23,42,0.06); padding:20px; }
-    .meta { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px }
-    pre { white-space:pre-wrap; word-break:break-word; font-family: inherit; font-size:1rem; line-height:1.45 }
-    .actions { margin-top:16px; display:flex; gap:8px }
-    .btn { padding:8px 12px; border-radius:8px; border:0; cursor:pointer }
-    .btn-back { background:#eef2ff; color:var(--primary) }
-    .btn-new { background:var(--primary); color:#fff }
-  </style>
+    <meta charset="UTF-8">
+    <title>Your Study Schedule</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="card">
-    <div class="meta">
-      <h1 style="margin:0">Your Generated Study Schedule</h1>
-      <div class="caps muted">Printable view</div>
+<body class="p-4 bg-gray-100">
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4">Your Personalized Study Schedule</h1>
+        <pre id="schedule-content" class="whitespace-pre-wrap text-gray-800"></pre>
     </div>
-
-    <div id="schedule-content">
-      <!-- schedule will be inserted here -->
-    </div>
-
-    <div class="actions">
-      <button id="back-button" class="btn btn-back">Back to Planner</button>
-      <button id="new-session" class="btn btn-new">Generate Another</button>
-    </div>
-  </div>
-
-  <script>
-    // Load the schedule from sessionStorage and render it safely
-    const scheduleContainer = document.getElementById('schedule-content');
-    const raw = sessionStorage.getItem('studySchedule');
-    const prompt = sessionStorage.getItem('studyPrompt') || '';
-
-    if (!raw) {
-      scheduleContainer.innerHTML = '<p class="muted">No schedule found. Please generate a schedule from the planner first.</p>';
-    } else {
-      // Show the schedule text inside a <pre> to preserve formatting.
-      const pre = document.createElement('pre');
-      pre.textContent = raw;
-      scheduleContainer.appendChild(pre);
-
-      // Optionally show the prompt collapsed so the user knows what was asked
-      if (prompt) {
-        const details = document.createElement('details');
-        details.style.marginTop = '12px';
-        const summary = document.createElement('summary');
-        summary.textContent = 'Show generation prompt';
-        details.appendChild(summary);
-        const p = document.createElement('pre');
-        p.textContent = prompt;
-        p.style.background = 'transparent';
-        p.style.padding = '0';
-        details.appendChild(p);
-        scheduleContainer.appendChild(details);
-      }
-    }
-
-    document.getElementById('back-button').addEventListener('click', () => {
-      // Go back to the session page. We don't clear sessionStorage so the user can come back.
-      window.location.href = 'session.html';
-    });
-
-    document.getElementById('new-session').addEventListener('click', () => {
-      // Clear stored schedule and prompt and go back
-      sessionStorage.removeItem('studySchedule');
-      sessionStorage.removeItem('studyPrompt');
-      window.location.href = 'newhacks.html';
-    });
-  </script>
+    <script>
+        const schedule = sessionStorage.getItem('studySchedule');
+        document.getElementById('schedule-content').textContent = schedule || 'Error: No schedule generated. Please try again.';
+    </script>
 </body>
 </html>

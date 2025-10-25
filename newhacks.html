@@ -243,45 +243,42 @@
          * @param {Array<Object>} messages - The conversation history array.
          */
         async function getChatCompletion(messages) {
-            
-            // The client only sends the model and messages to the proxy.
-            const payload = {
-                model: MODEL,
-                messages: messages,
-            };
+    const payload = {
+        model: MODEL,
+        messages: messages,
+    };
 
-            try {
-                // Fetch to the PROXY_API_URL, not OpenRouter directly!
-                const response = await fetch(PROXY_API_URL, {
-                    method: 'POST',
-                    // Note: No Authorization header needed here, the proxy adds it securely.
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+    try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': "Bearer ***REMOVED-OPENROUTER-KEY***", 
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Study Schedule Assistant'
+            },
+            body: JSON.stringify(payload)
+        });
 
-                if (!response.ok) {
-                    // If the proxy server fails or returns an error status
-                    const errorText = await response.text();
-                    throw new Error(`Proxy Server Error: ${response.status} - ${errorText || response.statusText}`);
-                }
-
-                const data = await response.json();
-                
-                // Extract the model's response text from the proxy's response
-                const assistantMessage = data.choices[0].message.content;
-                
-                return assistantMessage;
-
-            } catch (error) {
-                console.error('Fetch failed:', error);
-                return `Sorry, a connection error occurred. Ensure your proxy server is running: ${error.message}`;
-            }
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error: ${response.status} - ${errorText || response.statusText}`);
         }
+
+        const data = await response.json();
+        const assistantMessage = data.choices[0].message.content;
+        return assistantMessage;
+
+    } catch (error) {
+        console.error('Fetch failed:', error);
+        return `Sorry, a connection error occurred: ${error.message}`;
+    }
+}
 
         /**
          * Handles the submission of the study form and generates a schedule
          */
-        async function handleStudyFormSubmission() {
+                async function handleStudyFormSubmission() {
             if (isTyping) return;
 
             // Gather all new inputs
@@ -321,7 +318,7 @@
 - **Stress Level:** ${stress}
 - **Learning New Topic Preference:** "${learningStyle}"
 - **Daily Energy Rhythm:** "${energyRhythm}"
-- **Task Order Preference (Mixing Tasks):** "${taskOrder}"
+- **Task Order Preference (Mixing Tasks)::** "${taskOrder}"
 - **New Material Learning Preference:** "${learnPreference}"
 - **Mastery Identification:** "${masteryFeel}"
 - **Distraction Handling:** "${distractionHandle}"
@@ -348,21 +345,24 @@
             const schedule = await getChatCompletion(chatHistory);
 
             // Instead of rendering in the chat, open a dedicated schedule page.
-            try {
-                // Save schedule text to sessionStorage (not persisted long-term)
-                sessionStorage.setItem('studySchedule', schedule);
-                // Optionally save the prompt for reference
-                sessionStorage.setItem('studyPrompt', prompt);
-                // Navigate to the schedule-only page (assuming schedule.html exists)
-                window.location.href = 'schedule.html';
-                return; // navigation will leave the page
-            } finally {
-                // Reset UI in case navigation is blocked or fails
-                isTyping = false;
-                generateButton.disabled = false;
-                loadingIndicator.classList.add('hidden');
-            }
+            // Replace the try/finally block at the end with:
+        try {
+    // Instead of navigating, display the schedule in the current page
+        if (schedule.includes("connection error occurred")) {
+        alert("Error: " + schedule);
+        return;
         }
+    
+    // Save and navigate
+     sessionStorage.setItem('studySchedule', schedule);
+     sessionStorage.setItem('studyPrompt', prompt);
+     window.location.href = 'schedule.html';
+    } finally {
+        isTyping = false;
+        generateButton.disabled = false;
+        loadingIndicator.classList.add('hidden');
+    }
+}
         
         // Add styling for the form elements
         document.head.insertAdjacentHTML('beforeend', `
