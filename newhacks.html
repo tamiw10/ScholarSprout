@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenRouter Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" type="text/css" href="newhacks.css">
+    <style>
+        body {
+            background-color: #f3f4f6;
+        }
+        .chat-container {
+            height: 80vh; /* Responsive height */
+            max-height: 900px; /* Increased max-height for new form */
+            min-height: 400px;
+        }
+        .message {
+            max-width: 80%;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 1.25rem;
+            line-height: 1.4;
+        }
+        .user-message {
+            background-color: #3b82f6; /* Blue-500 */
+            color: white;
+            align-self: flex-end;
+            border-top-right-radius: 0.25rem; /* Smoother corner */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .ai-message {
+            background-color: #ffffff; /* White */
+            color: #1f2937; /* Gray-800 */
+            align-self: flex-start;
+            border: 1px solid #e5e7eb;
+            border-top-left-radius: 0.25rem; /* Smoother corner */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        /* Custom scrollbar for chat history */
+        #chat-history::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-history::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        #chat-history::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 20px;
+            border: 2px solid #f3f4f6;
+        }
+        /* New style for scrollable form area */
+        #session-form {
+            flex-grow: 1; /* Allow form to take up space */
+            overflow-y: auto; /* Make the form scrollable */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 flex justify-center items-center h-screen">
+
+    <div class="w-full max-w-2xl bg-white rounded-xl shadow-2xl p-4 sm:p-6 flex flex-col h-full chat-container">
+        <header class="pb-4 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-800">Study Schedule Assistant</h1>
+            <p class="text-sm text-gray-500">Your AI Study Planner</p>
+        </header>
+
+        <div id="session-form" class="mb-4 p-4 bg-white rounded-lg">
+            <h2 class="text-lg font-semibold mb-3">Personalized Study Profile</h2>
+            
+            <div class="grid grid-cols-1 gap-4 study-form">
+                
+                <div>
+                    <label for="time-available" class="block text-sm font-medium text-gray-700">How much time do you have today, and when is that?</label>
+                    <input type="text" id="time-available" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="E.g., 2 hours, from 6 PM to 8 PM">
+                </div>
+
+                <div>
+                    <label for="topic-knowledge" class="block text-sm font-medium text-gray-700">How well do you know the topic you are studying for?</label>
+                    <select id="topic-knowledge" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="none">None / New to topic</option>
+                        <option value="some">Some familiarity</option>
+                        <option value="mastered">Mostly mastered</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="subject-type" class="block text-sm font-medium text-gray-700">What is the subject?</label>
+                    <select id="subject-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="memorization-heavy">Memorization-heavy (history, geography, biology, philosophy)</option>
+                        <option value="practice-heavy">Practice-heavy (math, chemistry, biology, tech)</option>
+                        <option value="concept-heavy">Concept-heavy (theory, deep understanding)</option>
+                        <option value="doing-heavy">Doing-heavy (art, a large project, etc)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="other-subjects" class="block text-sm font-medium text-gray-700">How many other subjects are being tested for?</label>
+                    <input type="number" id="other-subjects" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="1" min="1">
+                    <p class="text-xs text-gray-500 mt-1">Controls whether to **Implement spaced-repetition**</p>
+                </div>
+
+                <div>
+                    <label for="energy-level" class="block text-sm font-medium text-gray-700">How much energy do you have?</label>
+                    <select id="energy-level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="high">High</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="stress-level" class="block text-sm font-medium text-gray-700">Stress Level</label>
+                    <select id="stress-level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="focus-duration" class="block text-sm font-medium text-gray-700">How long is your focus duration (in minutes)?</label>
+                    <input type="number" id="focus-duration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="45" min="15" max="180">
+                </div>
+
+                <div>
+                    <label for="learning-style" class="block text-sm font-medium text-gray-700">When you start a new topic, which of these feels most natural?</label>
+                    <select id="learning-style" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="dive-in-patterns">I dive in, try a few examples, and then figure out the patterns.</option>
+                        <option value="map-build">I like to step back, map out what I know, then slowly build.</option>
+                        <option value="review-plan">I prefer reviewing what’s expected, then I plan how to tackle it.</option>
+                        <option value="jump-reflect">I jump in when I feel ready, then reflect on what I learned afterwards.</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="energy-rhythm" class="block text-sm font-medium text-gray-700">Which statement best matches your daily energy rhythm?</label>
+                    <select id="energy-rhythm" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="morning">I’m sharpest right after waking up.</option>
+                        <option value="pick-up-steam">I pick up steam only after I’ve been going for a while.</option>
+                        <option value="late-night">I work best late at night or when things are quiet.</option>
+                        <option value="fluctuates">My energy fluctuates, so I pick blocks when I feel “in the zone”.</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="task-order" class="block text-sm font-medium text-gray-700">When faced with a mix of tasks (reading, problem-solving, organizing notes), what order do you usually follow?</label>
+                    <select id="task-order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="hardest-first">I go for the hardest/least comfortable first.</option>
+                        <option value="safe-to-hard">I start with the “safe” task then move to the harder one.</option>
+                        <option value="easiest-warmup">I pick whatever looks easiest to “warm up” then shift.</option>
+                        <option value="interest-momentum">I pick the task I’m most interested in first to build momentum.</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="learn-preference" class="block text-sm font-medium text-gray-700">How do you prefer to learn new material?</label>
+                    <select id="learn-preference" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="practice-examples">By doing lots of practice and examples.</option>
+                        <option value="theory-then-apply">By reading background/theory then applying.</option>
+                        <option value="map-then-fill">By planning a map/overview and then filling in details.</option>
+                        <option value="mixed-chunks">By mixing small chunks of theory + practice right away.</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="mastery-feel" class="block text-sm font-medium text-gray-700">How do you typically feel when you’ve mastered a topic?</label>
+                    <select id="mastery-feel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="teach-explain">I can teach or explain it to someone else.</option>
+                        <option value="big-picture-fit">I recognise the big picture and how it fits with other topics.</option>
+                        <option value="confident-apply">I feel confident I can apply it in tasks/problems.</option>
+                        <option value="review-comfortable">I still review it a bit but feel comfortable with the gist.</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="distraction-handle" class="block text-sm font-medium text-gray-700">When distractions or interruptions happen, what do you usually do?</label>
+                    <select id="distraction-handle" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="pause-restart">I pause and restart with fresh focus.</option>
+                        <option value="shift-lighter">I shift to a lighter task until I’m back on track.</option>
+                        <option value="change-location">I change locations or environment to re-focus.</option>
+                        <option value="break-return">I take a short break then return to the main task.</option>
+                    </select>
+                </div>
+
+            </div>
+            <div class="mt-4">
+                <button id="generate-schedule" class="w-full bg-blue-600 text-white p-2 rounded-lg font-semibold hover:bg-blue-700 transition duration-150 shadow-md">Generate Study Schedule</button>
+            </div>
+        </div>
+        <div id="loading-indicator" class="hidden my-2 text-center text-sm font-medium text-gray-500">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            AI is typing...
+        </div>
+
+        <div id="api-key-notice" class="text-xs text-red-500 mt-2 hidden">
+            API Key removed from client. This app now requires a Proxy Server running at `/api/chat`.
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION START (Client-Side) ---
+        // IMPORTANT: The API key has been removed from this file.
+        // We now point to your required proxy server endpoint, which will handle the key securely.
+        const PROXY_API_URL = "http://localhost:3000/api/chat"; // <<< THIS MUST BE CREATED ON YOUR SERVER
+        const MODEL = "meta-llama/llama-3.1-8b-instruct"; // This is still needed for the proxy payload
+        // --- CONFIGURATION END ---
+        
+        // State
+        const chatHistory = [];
+        let isTyping = false;
+
+        // DOM Elements
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const generateButton = document.getElementById('generate-schedule');
+
+        // Study form elements (all new, simplified inputs)
+        const timeAvailableInput = document.getElementById('time-available');
+        const topicKnowledgeSelect = document.getElementById('topic-knowledge');
+        const subjectTypeSelect = document.getElementById('subject-type');
+        const otherSubjectsInput = document.getElementById('other-subjects'); // Used for Spaced Repetition logic
+        const energyLevelSelect = document.getElementById('energy-level');
+        const stressLevelSelect = document.getElementById('stress-level');
+        const focusDurationInput = document.getElementById('focus-duration');
+        const learningStyleSelect = document.getElementById('learning-style');
+        const energyRhythmSelect = document.getElementById('energy-rhythm');
+        const taskOrderSelect = document.getElementById('task-order');
+        const learnPreferenceSelect = document.getElementById('learn-preference');
+        const masteryFeelSelect = document.getElementById('mastery-feel');
+        const distractionHandleSelect = document.getElementById('distraction-handle');
+
+        // Old persistent/chat elements are removed/commented out as they are no longer in the HTML.
+        // The save/load functions are removed as all inputs are now session-based.
+        
+        // Initialize the UI
+        generateButton.addEventListener('click', handleStudyFormSubmission);
+
+
+        /**
+         * Calls the Proxy Server endpoint to get a chat response.
+         * @param {Array<Object>} messages - The conversation history array.
+         */
+        async function getChatCompletion(messages) {
+            
+            // The client only sends the model and messages to the proxy.
+            const payload = {
+                model: MODEL,
+                messages: messages,
+            };
+
+            try {
+                // Fetch to the PROXY_API_URL, not OpenRouter directly!
+                const response = await fetch(PROXY_API_URL, {
+                    method: 'POST',
+                    // Note: No Authorization header needed here, the proxy adds it securely.
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    // If the proxy server fails or returns an error status
+                    const errorText = await response.text();
+                    throw new Error(`Proxy Server Error: ${response.status} - ${errorText || response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Extract the model's response text from the proxy's response
+                const assistantMessage = data.choices[0].message.content;
+                
+                return assistantMessage;
+
+            } catch (error) {
+                console.error('Fetch failed:', error);
+                return `Sorry, a connection error occurred. Ensure your proxy server is running: ${error.message}`;
+            }
+        }
+
+        /**
+         * Handles the submission of the study form and generates a schedule
+         */
+        async function handleStudyFormSubmission() {
+            if (isTyping) return;
+
+            // Gather all new inputs
+            const timeAvailable = timeAvailableInput.value.trim();
+            const topicKnowledge = topicKnowledgeSelect.value;
+            const subjectType = subjectTypeSelect.value;
+            const otherSubjects = otherSubjectsInput.value;
+            const energy = energyLevelSelect.value;
+            const stress = stressLevelSelect.value;
+            const focusDuration = focusDurationInput.value;
+            const learningStyle = learningStyleSelect.options[learningStyleSelect.selectedIndex].text;
+            const energyRhythm = energyRhythmSelect.options[energyRhythmSelect.selectedIndex].text;
+            const taskOrder = taskOrderSelect.options[taskOrderSelect.selectedIndex].text;
+            const learnPreference = learnPreferenceSelect.options[learnPreferenceSelect.selectedIndex].text;
+            const masteryFeel = masteryFeelSelect.options[masteryFeelSelect.selectedIndex].text;
+            const distractionHandle = distractionHandleSelect.options[distractionHandleSelect.selectedIndex].text;
+            
+            // Validation (minimal check)
+            if (!timeAvailable || !focusDuration) {
+                 alert('Please fill in your available time and focus duration.');
+                 return;
+            }
+
+            // Determine if Spaced Repetition should be explicitly requested
+            const useSpacedRepetition = parseInt(otherSubjects, 10) > 1 ? "Yes, please incorporate spaced repetition techniques." : "No, focus on the single subject.";
+
+
+            // Build the comprehensive prompt
+            const prompt = `Please create a highly personalized study schedule for my session based on the following profile. The schedule should include realistic time blocks, breaks, suggested break activities, and study techniques tailored to my needs.
+
+**My Study Profile:**
+- **Time Available:** ${timeAvailable}
+- **Focus Duration per Block:** ${focusDuration} minutes
+- **Subject Type:** ${subjectType}
+- **Current Knowledge Level:** ${topicKnowledge}
+- **Energy Level:** ${energy}
+- **Stress Level:** ${stress}
+- **Learning New Topic Preference:** "${learningStyle}"
+- **Daily Energy Rhythm:** "${energyRhythm}"
+- **Task Order Preference (Mixing Tasks):** "${taskOrder}"
+- **New Material Learning Preference:** "${learnPreference}"
+- **Mastery Identification:** "${masteryFeel}"
+- **Distraction Handling:** "${distractionHandle}"
+- **Multi-Subject Context:** ${useSpacedRepetition}
+
+**Requirements for the Schedule:**
+1) If there are multiple subjects, please use the interweaving repetition method.
+2) For each subject, identify it as a concept-heavy subject, a practice-heavy subject (ie STEM subjects), or a memorization-heavy subject (ie history, biology, philosophy). 
+3) The length of the study block should correlate to the amount of energy the user has. Please classify the user in the following four types of studying: Deep Focus Mode (the user is ready for challenging tasks), Momentum mode (they must start with easier tasks and move to harder tasks), Recovery mode (small bursts of tasks interspersed with frequent breaks), or sprint mode (there is a high time constraint)
+4) Between blocks, depending on the frequency of the breaks, the length of the breaks, and the energy level of the user, please create physical activities that the user should be doing. (ie high energy: do a 10 minute HIIT workout. Medium energy: go on a walk outside. Low energy: suggest a stretching or yoga session. These are just ideas) 
+5) The formatting of the response should follow as such:
+	For each break: Take a Break: [insert activity] [insert time duration]
+	For each study block: Study Time: [insert subject] [insert type of study method based on 2)] "newline" [insert a 1-2 sentence description on how to effectively use this study method for the subject]`;
+
+            // Add prompt to chat history
+            chatHistory.push({ role: 'user', content: prompt });
+
+            // Show loading UI
+            isTyping = true;
+            generateButton.disabled = true;
+            loadingIndicator.classList.remove('hidden');
+
+            // Call AI
+            const schedule = await getChatCompletion(chatHistory);
+
+            // Instead of rendering in the chat, open a dedicated schedule page.
+            try {
+                // Save schedule text to sessionStorage (not persisted long-term)
+                sessionStorage.setItem('studySchedule', schedule);
+                // Optionally save the prompt for reference
+                sessionStorage.setItem('studyPrompt', prompt);
+                // Navigate to the schedule-only page (assuming schedule.html exists)
+                window.location.href = 'schedule.html';
+                return; // navigation will leave the page
+            } finally {
+                // Reset UI in case navigation is blocked or fails
+                isTyping = false;
+                generateButton.disabled = false;
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+        
+        // Add styling for the form elements
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                select, textarea, input[type="number"], input[type="text"] {
+                    border: 1px solid #e5e7eb;
+                    padding: 0.5rem;
+                }
+                .study-form label {
+                    margin-bottom: 0.25rem;
+                    margin-top: 0.75rem;
+                }
+            </style>
+        `);
+
+    </script>
+</body>
+</html>

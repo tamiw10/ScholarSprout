@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Session — Study Planner</title>
+  <link rel="stylesheet" href="newhacks.css">
+  <style>
+    .app{max-width:920px;margin:18px auto;padding:18px}
+    .chat-wrap{background:var(--card);border-radius:12px;padding:14px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="pb-4 border-b border-gray-200">
+      <h1 class="text-2xl font-bold text-gray-800">Study Session</h1>
+      <p class="text-sm muted">Session-only info — fill this every time</p>
+    </header>
+
+    <div id="session-form" class="mb-4 p-4 bg-white rounded-lg">
+      <h2 class="text-lg font-semibold mb-3">Session Info</h2>
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Focus Duration (minutes)</label>
+          <input type="number" id="focus-duration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="45" min="15" max="180">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Knowledge Level</label>
+          <select id="knowledge-level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="none">None / New to topic</option>
+            <option value="some">Some familiarity</option>
+            <option value="mastered">Mostly mastered</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Energy Level</label>
+          <select id="energy-level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Mood / Stress Level</label>
+          <select id="stress-level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="no-stress">No stress</option>
+            <option value="mild-stress">Mild / Medium</option>
+            <option value="high-stress">High / Severe</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:10px;">
+        <button id="generate-schedule" class="btn btn-primary">Generate Study Schedule</button>
+        <a href="preferences.html" class="btn btn-soft">Edit Persistent Preferences</a>
+      </div>
+    </div>
+
+    <div class="chat-wrap">
+      <div id="chat-history" class="flex-grow overflow-y-auto pt-4 pr-2 space-y-4" style="min-height:120px">
+        <div class="ai-message">Welcome! Fill session info and click Generate Study Schedule.</div>
+      </div>
+      <div id="loading-indicator" class="hidden my-2 text-center text-sm muted">AI is typing...</div>
+    </div>
+  </div>
+
+  <script>
+    // Config
+    const PROXY_API_URL = "http://localhost:3000/api/chat";
+    const MODEL = "meta-llama/llama-3.1-8b-instruct";
+
+    // Elements
+    const generateButton = document.getElementById('generate-schedule');
+    const chatHistoryDiv = document.getElementById('chat-history');
+    const loadingIndicator = document.getElementById('loading-indicator');
+
+    // Session inputs
+    const focusDurationInput = document.getElementById('focus-duration');
+    const knowledgeLevelSelect = document.getElementById('knowledge-level');
+    const energyLevelSelect = document.getElementById('energy-level');
+    const stressLevelSelect = document.getElementById('stress-level');
+
+    function loadPersistentForSession(){
+      try{ const raw = localStorage.getItem('studyPreferences'); if(!raw) return null; return JSON.parse(raw); }catch(e){return null}
+    }
+
+    async function getChatCompletion(messages){
+      const payload = { model: MODEL, messages };
+      try{
+        const res = await fetch(PROXY_API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        if(!res.ok) { const t = await res.text(); throw new Error(t||res.statusText); }
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || JSON.stringify(data);
+      }catch(err){ console.error(err); return `Error: ${err.message}`; }
+    }
+
+    function renderMessage(text, role){
+      const d = document.createElement('div'); d.textContent = text; d.classList.add(role==='user'?'user-message':'ai-message'); d.style.margin='8px 0'; chatHistoryDiv.appendChild(d); chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    }
+
+    generateButton.addEventListener('click', async ()=>{
+      generateButton.disabled = true; loadingIndicator.classList.remove('hidden');
+      const persistent = loadPersistentForSession();
+      const assignments = persistent?.assignments || '';
+      const studyTime = persistent?.studyTime || 'unspecified';
+      const preferences = Array.isArray(persistent?.preferences)?persistent.preferences:[];
+      const focus = focusDurationInput.value;
+      const knowledge = knowledgeLevelSelect.value;
+      const energy = energyLevelSelect.value;
+      const stress = stressLevelSelect.value;
+
+      // Build tailored break suggestions from the saved survey and current session values
+      const survey = persistent?.survey || {};
+
+      function getBreakSuggestions(survey, energy, stress) {
+        // Prewritten suggestions (kept concise for prompt inclusion)
+        const energyLow = `When Energy Is Low:\n- Stretch routine (2–3 min): neck/shoulder/back rolls.\n- Walk or climb stairs briefly.\n- Go outside for sunlight if possible.\n- Listen to upbeat music or drink water slowly.`;
+        const energyHigh = `When Energy Is High:\n- Mini dance/stretch bursts (1–2 min).\n- Desk push-ups or jumping jacks.\n- Tidy workspace or quick journaling.\n- Breathing exercises (2–4–4) for calm clarity.`;
+        const stressHigh = `When Stress Is High:\n- Slow walk in silence or progressive muscle relaxation.\n- Yoga poses (child's pose, cat-cow).\n- Box breathing (4–4–4–4) or grounding (5-4-3-2-1).\n- Listen to calming ambient sounds.`;
+        const emotionalDrain = `When Emotionally Drained:\n- Gentle stretching or warm face wash/shower.\n- Short guided meditation or voice-note feelings (no analysis).\n- Look through calming photos or watch a comforting short video.`;
+        const emotionalPositive = `When Emotionally Positive:\n- Go outside walk with music/podcast.\n- Tidy or redecorate study space.\n- Send a short supportive message or list "what's going well".`;
+
+        const parts = [];
+
+        // Mood mapping (survey.mood values: alert, okay_warmup, dragging, wandering)
+        if (survey.mood === 'alert') {
+          parts.push(energyHigh);
+        } else if (survey.mood === 'okay_warmup') {
+          parts.push(energyHigh);
+        } else if (survey.mood === 'dragging') {
+          parts.push(energyLow);
+        } else if (survey.mood === 'wandering') {
+          parts.push(energyLow);
+        }
+
+        // Stress level overrides/adds
+        if (stress === 'high-stress') parts.push(stressHigh);
+
+        // Inner voice / task preferences: adjust for emotionally drained vs positive
+        if (survey.inner === 'unsure') parts.push(emotionalDrain);
+        if (survey.inner === 'hardest' || survey.inner === 'warmup' || survey.task === 'challenging') {
+          // If feeling motivated, also add positive momentum activities
+          parts.push(emotionalPositive);
+        }
+
+        // Fallback: if nothing matched, include a small balanced set
+        if (parts.length === 0) parts.push(`Quick break ideas: short stretch, drink water, 2–3 deep breaths, or a 2-minute walk.`);
+
+        return parts.join('\n\n');
+      }
+
+      const breakSuggestionsText = getBreakSuggestions(survey, energy, stress);
+
+      const prompt = `Please create a personalized study schedule using the information below.\n\nPersistent Info:\nAssignments: ${assignments}\nPreferred Study Time: ${studyTime}\nStudy Preferences: ${preferences.join(', ')}\n\nSession Info:\nFocus Duration: ${focus} minutes\nKnowledge Level: ${knowledge}\nEnergy Level: ${energy}\nMood/Stress Level: ${stress}\n\nBreak suggestions (tailored):\n${breakSuggestionsText}\n\nRequirements:\n1) Provide an ordered schedule for the next study session(s) with specific time blocks based on the focus duration.\n2) Include breaks after each focus block (5-15 minutes) and for each break suggest 2–4 activities chosen from the tailored break suggestions above, matching the user's preferences and energy/stress state.\n3) Suggest specific study activities (reading, practice problems, flashcards, summarization) matched to the assignment types and knowledge level.\n4) Offer 3 concise tips to maintain focus during the session.`;
+
+      // push to chat history (user)
+      renderMessage(prompt, 'user');
+      const ai = await getChatCompletion([{role:'user', content:prompt}]);
+
+      // Save and navigate to schedule page
+      sessionStorage.setItem('studySchedule', ai);
+      sessionStorage.setItem('studyPrompt', prompt);
+      loadingIndicator.classList.add('hidden');
+      generateButton.disabled = false;
+      window.location.href = 'schedule.html';
+    });
+  </script>
+</body>
+</html>
