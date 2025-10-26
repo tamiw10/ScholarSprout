@@ -2,17 +2,193 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Your Study Schedule</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Study Plan</title>
+    <!-- We'll keep Tailwind for basic layout utilities -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define a green theme color palette */
+        :root {
+            --green-primary: #16a34a; /* A vibrant green (like Tailwind's green-600) */
+            --green-light-bg: #f0fdf4; /* A very light green background (green-50) */
+            --green-border: #bbf7d0;   /* A soft green for borders (green-200) */
+            --accent-gray: #64748b;    /* A cool gray for breaks (slate-500) */
+            --text-dark: #1e293b;      /* Dark text for headings (slate-800) */
+            --text-muted: #475569;     /* Softer text for descriptions (slate-600) */
+        }
+
+        /* Use a nice font from Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9; /* slate-100 */
+        }
+
+        /* The main card holding the schedule */
+        .schedule-card {
+            background-color: white;
+            border-radius: 0.75rem; /* 12px */
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            padding: 1.5rem 2rem;
+            max-width: 48rem; /* max-w-3xl */
+            margin: 2rem auto;
+        }
+
+        /* Base style for each item in the schedule (study or break) */
+        .schedule-item {
+            border-radius: 0.5rem; /* 8px */
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .schedule-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+        }
+
+        /* Specific style for STUDY blocks */
+        .study-block {
+            background-color: var(--green-light-bg);
+            border-left: 4px solid var(--green-primary);
+        }
+
+        /* Specific style for BREAK blocks */
+        .break-block {
+            background-color: #f8fafc; /* slate-50 */
+            border-left: 4px solid var(--accent-gray);
+        }
+
+        /* Style for the block title (e.g., "Math" or "Take a walk") */
+        .schedule-item h3 {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Add icons before the titles for a nice visual touch */
+        .study-block h3::before {
+            content: '📖';
+            margin-right: 0.75rem;
+            font-size: 1.5rem;
+        }
+        .break-block h3::before {
+            content: '☕';
+            margin-right: 0.75rem;
+            font-size: 1.5rem;
+        }
+
+        /* Style for the description text in a study block */
+        .schedule-item p {
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0;
+            padding-left: 2.5rem; /* Align with text after icon */
+        }
+        
+        /* For any introductory or concluding text from the AI */
+        .info-message {
+            background-color: #eff6ff; /* blue-50 */
+            color: #374151; /* gray-700 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.25rem;
+            border-left: 4px solid #60a5fa; /* blue-400 */
+        }
+        
+        /* "Go Back" button styling */
+        .btn-back {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 10px 20px;
+            font-weight: 500;
+            color: var(--text-dark);
+            background-color: #f1f5f9; /* slate-100 */
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.5rem;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-back:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            background-color: white;
+        }
+    </style>
 </head>
-<body class="p-4 bg-gray-100">
-    <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-4">Your Personalized Study Schedule</h1>
-        <pre id="schedule-content" class="whitespace-pre-wrap text-gray-800"></pre>
+<body class="p-4">
+
+    <div class="schedule-card">
+        <header class="border-b pb-4 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Your Personalized Study Plan</h1>
+            <p class="text-gray-500 mt-1">Here's the focused schedule generated just for you.</p>
+        </header>
+
+        <!-- The generated schedule will be BEAUTIFULLY injected here by the script -->
+        <div id="schedule-content">
+            <p class="text-center text-gray-500">Loading your schedule...</p>
+        </div>
+        
+        <a href="index.html" class="btn-back">← Create a New Schedule</a>
     </div>
+
     <script>
-        const schedule = sessionStorage.getItem('studySchedule');
-        document.getElementById('schedule-content').textContent = schedule || 'Error: No schedule generated. Please try again.';
+        document.addEventListener('DOMContentLoaded', () => {
+            const scheduleContentDiv = document.getElementById('schedule-content');
+            // Get the raw text from the previous page
+            const rawSchedule = sessionStorage.getItem('studySchedule');
+
+            if (!rawSchedule) {
+                scheduleContentDiv.innerHTML = '<p class="info-message">Error: No schedule was found. Please go back and generate one first.</p>';
+                return;
+            }
+
+            // This is the magic function that converts text to pretty HTML
+            const generatedHtml = parseScheduleToHtml(rawSchedule);
+            scheduleContentDiv.innerHTML = generatedHtml;
+        });
+
+        /**
+         * Parses the raw AI text response and converts it into structured, styled HTML.
+         * @param {string} text - The raw text from the AI.
+         * @returns {string} - The generated HTML string.
+         */
+        function parseScheduleToHtml(text) {
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            let html = '';
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (line.toLowerCase().startsWith('study time:')) {
+                    const title = line.replace(/study time:/i, '').trim();
+                    // Assume the next line is the description for this study block
+                    const description = (i + 1 < lines.length) ? lines[i + 1].trim() : '';
+                    
+                    html += `
+                        <div class="schedule-item study-block">
+                            <h3>${title}</h3>
+                            <p>${description}</p>
+                        </div>
+                    `;
+                    i++; // Important: Skip the next line since we've already used it
+                } else if (line.toLowerCase().startsWith('take a break:')) {
+                    const title = line.replace(/take a break:/i, '').trim();
+                    html += `
+                        <div class="schedule-item break-block">
+                            <h3>${title}</h3>
+                        </div>
+                    `;
+                } else if (line) {
+                    // Catches any other lines (like intros or final tips)
+                    html += `<div class="info-message">${line}</div>`;
+                }
+            }
+            return html;
+        }
     </script>
 </body>
 </html>
