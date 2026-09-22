@@ -249,13 +249,12 @@
     };
 
     try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        // Always call our own proxy (server.js). The OpenRouter key lives only on the
+        // server, so no credential is ever shipped to the browser.
+        const response = await fetch(PROXY_API_URL, {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': "Bearer ***REMOVED-OPENROUTER-KEY***", 
-                'HTTP-Referer': window.location.origin,
-                'X-Title': 'Study Schedule Assistant'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });

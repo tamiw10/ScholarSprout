@@ -5,15 +5,25 @@ const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const cors = require('cors')
 
-// --- 🔑 SECURITY: Set your API Key securely here! ---
-// NOTE: For testing, you can temporarily hardcode your key here:
-// const OPENAI_API_KEY = "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"; 
-const OPENAI_API_KEY = process.env.API_KEY; 
+// --- 🔑 SECURITY: the OpenRouter key comes from the environment only. ---
+// Set OPENROUTER_API_KEY in a local .env file (see .env.example). Never commit it,
+// and never send it to the browser -- all OpenRouter calls go through this proxy.
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+if (!OPENROUTER_API_KEY) {
+    console.error('FATAL: OPENROUTER_API_KEY is not set.');
+    console.error('Create a .env file next to server.js containing:');
+    console.error('  OPENROUTER_API_KEY=<your OpenRouter key>');
+    console.error('  PORT=3000');
+    console.error('See .env.example for the template. Refusing to start so that no');
+    console.error('request is ever sent with an "Authorization: Bearer undefined" header.');
+    process.exit(1);
+}
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-const PORT = 3000;          
+const PORT = process.env.PORT || 3000;
 
 // --- SERVER CONFIGURATION ---
 
@@ -31,6 +41,11 @@ app.use(bodyParser.json());
 // --- 🌐 AI PROXY ROUTE ---
 app.post('/api/chat', async (req, res) => {
     try {
+        // Defensive re-check: never emit "Bearer undefined" even if started oddly.
+        if (!OPENROUTER_API_KEY) {
+            return res.status(503).json({ error: 'Server is not configured with an OpenRouter API key.' });
+        }
+
         // Ensure the fetch function is available (Node.js >= 18)
         if (typeof fetch === 'undefined') {
             throw new Error('Native fetch is not available. Use Node.js 18+ or install node-fetch.');
@@ -43,8 +58,8 @@ app.post('/api/chat', async (req, res) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Check if the API Key is set before using it
-                'Authorization': `Bearer ${OPENAI_API_KEY}` 
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'X-Title': 'Study Schedule Assistant'
             },
             body: JSON.stringify(req.body) 
         });
